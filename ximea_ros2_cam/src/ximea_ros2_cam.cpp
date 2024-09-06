@@ -36,6 +36,25 @@ std::map<std::string, std::string> XimeaROSCam::ImgEncodingMap = {
 std::map<int, int> XimeaROSCam::CamMaxPixelWidth = { {0, 2048} };
 std::map<int, int> XimeaROSCam::CamMaxPixelHeight = { {0, 1088} };
 
+std::map<std::string, int> XimeaROSCam::DownsamplingMap= {
+    {"XI_DWN_1x1",      XI_DWN_1x1},
+    {"XI_DWN_2x2",      XI_DWN_2x2},
+    {"XI_DWN_3x3",      XI_DWN_3x3},
+    {"XI_DWN_4x4",      XI_DWN_4x4},
+    {"XI_DWN_5x5",      XI_DWN_5x5},
+    {"XI_DWN_6x6",      XI_DWN_6x6},
+    {"XI_DWN_7x7",      XI_DWN_7x7},
+    {"XI_DWN_8x8",      XI_DWN_8x8},
+    {"XI_DWN_9x9",      XI_DWN_9x9},
+    {"XI_DWN_10x10",      XI_DWN_10x10},
+    {"XI_DWN_16x16",      XI_DWN_16x16}
+};
+
+std::map<std::string, int> XimeaROSCam::DownsamplingTypeMap= {
+    {"XI_BINNING",      XI_BINNING},
+    {"XI_SKIPPING",      XI_SKIPPING}
+};
+
 // Constructor
 XimeaROSCam::XimeaROSCam() : 
     Node("ximea_cam_node"),
@@ -66,19 +85,20 @@ XimeaROSCam::~XimeaROSCam() {
 
             
         //Save Camera context
-        char* cam_context=NULL;
-	    #define SIZE_OF_CONTEXT_BUFFER (10*1024*1024) // 10MiB
-	    cam_context = (char*)malloc(SIZE_OF_CONTEXT_BUFFER);
-	    xi_stat= xiGetParamString(this->xi_h_, XI_PRM_API_CONTEXT_LIST, cam_context, SIZE_OF_CONTEXT_BUFFER);
+        if (!this->cam_context_path_.empty()){
+            char* cam_context=NULL;
+            #define SIZE_OF_CONTEXT_BUFFER (10*1024*1024) // 10MiB
+            cam_context = (char*)malloc(SIZE_OF_CONTEXT_BUFFER);
+            xi_stat= xiGetParamString(this->xi_h_, XI_PRM_API_CONTEXT_LIST, cam_context, SIZE_OF_CONTEXT_BUFFER);
 
-        std::ofstream file("/home/m2s2/ecal_meas/cam_context.bin", std::ios::out | std::ios::binary);
-        file.write(cam_context, SIZE_OF_CONTEXT_BUFFER);
-        file.close();
+            std::ofstream file("/home/m2s2/ecal_meas/cam_context.bin", std::ios::out | std::ios::binary);
+            file.write(cam_context, SIZE_OF_CONTEXT_BUFFER);
+            file.close();
 
-        RCLCPP_INFO_STREAM(this->get_logger(), "Done Writing camera context file");
-        std::string s(cam_context);
-        RCLCPP_INFO_STREAM(this->get_logger(), "Cam Context: " << s);
-        
+            RCLCPP_INFO_STREAM(this->get_logger(), "Done Writing camera context file");
+            std::string s(cam_context);
+            RCLCPP_INFO_STREAM(this->get_logger(), "Cam Context: " << s);
+        }
             
         // Stop image acquisition
         this->is_active_ = false;
@@ -91,7 +111,7 @@ XimeaROSCam::~XimeaROSCam() {
         RCLCPP_INFO_STREAM(this->get_logger(), "Closed device: " << this->cam_serialno_);
     }
 
-    RCLCPP_INFO(this->get_logger(), "ximea_ros2_cam node shutdown complete.");
+    RCLCPP_INFO(this->get_logger(), "%s node shutdown complete.", this->get_name());
 
     // To avoid warnings
     (void)xi_stat;
@@ -164,6 +184,13 @@ void XimeaROSCam::openCam() {
     xi_stat = xiSetParamInt(this->xi_h_,
                             XI_PRM_IMAGE_DATA_FORMAT,
                             this->cam_format_int_);
+
+    // Downsampling config
+    xi_stat = xiSetParamInt(this->xi_h_, XI_PRM_DOWNSAMPLING, this->cam_downsampling_int_);
+    xi_stat = xiSetParamInt(this->xi_h_, XI_PRM_DOWNSAMPLING_TYPE, this->cam_downsampling_type_int_);
+    RCLCPP_INFO_STREAM(this->get_logger(),  "Setting downsampling to: " << this->cam_downsampling_ << " type:" << this->cam_downsampling_type_);
+
+    RCLCPP_INFO_STREAM(this->get_logger(),  "Status: " << xi_stat);
 
     //      -- White balance mode --
     // Note: Setting XI_PRM_MANUAL right before or after setting coeffs
@@ -371,6 +398,8 @@ void XimeaROSCam::openCam() {
     xi_stat = xiGetParamInt(this->xi_h_, XI_PRM_ACQ_TRANSPORT_BUFFER_SIZE XI_PRM_INFO_INCREMENT, &transport_buffer_size_increment);
     xi_stat = xiGetParamInt(this->xi_h_, XI_PRM_ACQ_TRANSPORT_BUFFER_SIZE XI_PRM_INFO_MIN, &transport_buffer_size_minimum);
     
+    
+
     if(payload < transport_buffer_size_default + transport_buffer_size_increment){
         
         int transport_buffer_size = payload;
@@ -465,7 +494,7 @@ void XimeaROSCam::frameCaptureCb() {
             this->cam_pub_.publish(img, cam_info);
             RCLCPP_INFO(this->get_logger(), "Image published: [%i]", this->img_count_);
 
-            if (this->img_count_ == 10){
+            if (this->img_count_ == 10 && !this->cam_context_path_.empty()){
                 //Save Camera context
                 char* cam_context=NULL;
 	            #define SIZE_OF_CONTEXT_BUFFER (10*1024*1024) // 10MiB
@@ -586,8 +615,8 @@ void XimeaROSCam::initParams(){
     this->declare_parameter("cv_invert_enable", false);
     this->get_parameter("cv_invert_enable", this->cv_invert_enable_);
 
-    // cam context
-    this->declare_parameter("cam_context_path", std::string("/home/cam_context1.bin"));
+    // cam contextDone Writing camera context file
+    this->declare_parameter("cam_context_path", std::string(""));
     this->get_parameter("cam_context_path", this->cam_context_path_);
 
     //      -- apply camera name --
@@ -611,6 +640,7 @@ void XimeaROSCam::initParams(){
     this->declare_parameter("poll_time_frame", 0.0f);
     this->get_parameter("poll_time_frame", this->poll_time_frame_);
     RCLCPP_INFO_STREAM(this->get_logger(), "poll_time_frame: " << this->poll_time_frame_);
+    
 
     //      -- apply compressed image parameters (from image_transport) --
     this->declare_parameter( "image_transport_compressed_format", std::string("INVALID"));
@@ -663,6 +693,16 @@ void XimeaROSCam::initParams(){
     this->declare_parameter("img_capture_timeout", -1);
     this->get_parameter("img_capture_timeout", this->cam_img_cap_timeout_);
     RCLCPP_INFO_STREAM(this->get_logger(),  "cam_img_cap_timeout_: " << this->cam_img_cap_timeout_);
+
+    //      -- apply downsampling parameters --
+    this->declare_parameter( "cam_downsampling", std::string("XI_DWN_1x1"));
+    this->get_parameter("cam_downsampling", this->cam_downsampling_);
+    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_downsampling: " << this->cam_downsampling_);
+    this->cam_downsampling_int_ = DownsamplingMap[this->cam_downsampling_];
+    this->declare_parameter( "cam_downsampling_type", std::string("XI_BINNING"));
+    this->get_parameter("cam_downsampling_type", this->cam_downsampling_type_);
+    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_downsampling_type: " << this->cam_downsampling_type_);
+    this->cam_downsampling_type_int_ = DownsamplingTypeMap[this->cam_downsampling_type_];
 
     //      -- apply exposure parameters --
     this->declare_parameter("auto_exposure", false);

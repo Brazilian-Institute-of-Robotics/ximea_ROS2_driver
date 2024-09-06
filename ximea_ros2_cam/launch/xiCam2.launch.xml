@@ -3,22 +3,20 @@
 
     <group>
         <node pkg="ximea_ros2_cam" name="ximea_cam_node" exec="ximea_ros2_cam_node" output="screen">
-            <param name="serial_no" value="'UYFAS2411014'" />
-            <param name="cam_name" value="ximea_cam" />
+            <param name="serial_no" value="'UYGAS2411015'" />
+            <param name="cam_name" value="ximea_cam2" />
             <param name="calib_file" value=""/>
             <param name="frame_id" value="'0'"/>
             <param name="num_cams_in_bus" value="2"/>
-            <param name="format" value="XI_RGB24"/>
-            <param name="cam_downsampling" value="XI_DWN_4x4"/>
-            <param name="cam_downsampling_type" value="XI_BINNING"/>
+            <param name="format" value="XI_MONO8"/>
             <param name="bw_safetyratio" value="1.0"/>
             <param name="publish_xi_image_info" value="true"/>
-            <param name="poll_time" value="2.0"/>
+            <param name="poll_time" value="4.0"/>
             <param name="poll_time_frame" value="0.001"/>
             <param from="$(find-pkg-share ximea_ros2_cam)/config/xiCam_config.yaml"/>
             <param name= "cam_context_path" value="" /> 
-            <remap from="/ximea/camera_info" to="/ximea/camera_info_1" />
-            <remap from="/ximea/image_raw" to="/ximea/image_raw_1" />
+            <remap from="/ximea/camera_info" to="/ximea/camera_info_2" />
+            <remap from="/ximea/image_raw" to="/ximea/image_raw_2" />
         </node>
     </group>
 

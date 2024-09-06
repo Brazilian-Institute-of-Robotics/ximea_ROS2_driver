@@ -89,6 +89,8 @@ class XimeaROSCam : public rclcpp::Node, std::enable_shared_from_this<XimeaROSCa
    static std::map<std::string, std::string> ImgEncodingMap;
    static std::map<int, int> CamMaxPixelWidth;
    static std::map<int, int> CamMaxPixelHeight;
+   static std::map<std::string, int> DownsamplingMap;
+   static std::map<std::string, int> DownsamplingTypeMap;
 
    // ROS Timers
    rclcpp::TimerBase::SharedPtr xi_open_device_cb_;
@@ -158,6 +160,10 @@ class XimeaROSCam : public rclcpp::Node, std::enable_shared_from_this<XimeaROSCa
    bool cam_framerate_control_;   // framerate control - enable or disable
    int cam_framerate_set_;      // framerate control - setting fps
    int cam_img_cap_timeout_;       // max time to wait for img
+   std::string cam_downsampling_;
+   int cam_downsampling_int_;
+   std::string cam_downsampling_type_;
+   int cam_downsampling_type_int_;
 
    // white balance mode: 0 - none, 1 - use coeffs, 2 = auto
    int cam_white_balance_mode_;

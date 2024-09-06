@@ -1,5 +1,23 @@
-ximea_cam_node:
+ximea_cam1_node:
   ros__parameters:
+    ####################
+    # Specific Configuration Parameters Go Here!
+    ####################
+  
+    serial_no: "UYGAS2411015"
+    cam_name: "ximea_cam2"
+    calib_file: ""
+    frame_id: "0"
+    num_cams_in_bus: 2
+    format: "XI_MONO8"
+    cam_downsampling: "XI_DWN_4x4"
+    cam_downsampling_type: "XI_BINNING"
+    bw_safetyratio: 1.0
+    publish_xi_image_info: true
+    poll_time: 4.0
+    poll_time_frame: 0.001
+    cam_context_path: ""
+
     ####################
     # General Configuration Parameters Go Here!
     ####################
