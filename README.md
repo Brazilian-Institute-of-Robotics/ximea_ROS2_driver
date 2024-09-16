@@ -47,7 +47,8 @@ $ sudo gpasswd -a $USER plugdev
 ```bash
 $ echo 0 > /sys/module/usbcore/parameters/usbfs_memory_mb
 # TODO: THIS COMMAND NEED SUDO FOR EXECUTION, AVOID THIS OF CONFIGURE. 
-# You can put this line to your bashrc file to apply to every new shell
+# You can put this line to your bashrc file to apply to every new shell or use 
+sudo tee /sys/module/usbcore/parameters/usbfs_memory_mb >/dev/null <<<0
 ```
 #### Set realtime priority by putting the following to ``` /etc/security/limits.conf ```:
 ```bash
