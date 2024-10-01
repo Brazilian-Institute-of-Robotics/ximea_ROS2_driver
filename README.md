@@ -17,7 +17,7 @@ This repo aims provides a generic [ROS2](https://docs.ros.org/en/foxy/index.html
   
 ### Ximea SDK
 
-Installed and tested on Ubuntu 20.04 LTS.
+Installed and tested on Ubuntu 20.04 LTS and Ubuntu 22.04 LTS.
 
 <b> OPTIONAL: </b>For full installation and setup, you could simply run the bash script: [ximea_install.sh](ximea_ros2_cam/docs/installation/ximea_install.sh). Make sure you have the limits.txt file in the same directory. Also checkout the [docker file](ximea_ros2_cam/docs/docker/XIMEA.Dockerfile) for possible use with ROS2 Humble using the [nvidia-isaac-ros](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common) docker workspace.
 
