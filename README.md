@@ -11,7 +11,7 @@ This repo aims provides a generic [ROS2](https://docs.ros.org/en/foxy/index.html
 
 ### ROS2
 
-- Tested on [ROS2 foxy](https://docs.ros.org/en/foxy/Installation.html)
+- Tested on [ROS2 foxy](https://docs.ros.org/en/foxy/Installation.html) and [ROS2 humble](https://docs.ros.org/en/humble/Installation.html)
 
 - Using [eCAL RWM](https://github.com/eclipse-ecal/rmw_ecal) as an alternative to ROS2 DDS implementations showed significant perfomance improvements
   
@@ -45,11 +45,40 @@ $ sudo gpasswd -a $USER plugdev
 ```
 #### Set the USB FS memory allocation to infinite for sufficient buffering size for high bandwith USB3.0 streams:
 ```bash
-$ echo 0 > /sys/module/usbcore/parameters/usbfs_memory_mb
-# TODO: THIS COMMAND NEED SUDO FOR EXECUTION, AVOID THIS OF CONFIGURE. 
-# You can put this line to your bashrc file to apply to every new shell or use 
 sudo tee /sys/module/usbcore/parameters/usbfs_memory_mb >/dev/null <<<0
 ```
+---
+#### Note:
+To automate this configuration may be necessary to create a initialization service.
+
+Create service file
+```bash
+sudo nano /etc/systemd/system/usbfs_memory.service
+```
+Add this in the file
+```bash
+[Unit]
+Description=Set usbfs_memory_mb for USB max transmission
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'echo 0 > /sys/module/usbcore/parameters/usbfs_memory_mb'
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
+
+```
+ 3. Save the file and run:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable usbfs_memory.service
+sudo systemctl start usbfs_memory.service
+```
+The service will automatically run after system init.
+
+---
 #### Set realtime priority by putting the following to ``` /etc/security/limits.conf ```:
 ```bash
 *               -       rtprio          0
@@ -95,8 +124,9 @@ $ ros2 launch ximea_ros2_cam multipleCam.launch.py
 # To view the stream
 $ ros2 run rqt_image_view rqt_image_view
 ```
+The [multipleCam.launch](ximea_ros2_cam/launch/multipleCam.launch.py) file calls both camera configs [xiCam1_config](ximea_ros2_cam/config/xiCam1_config.yaml) and [xiCam2_config](ximea_ros2_cam/config/xiCam2_config.yaml).
 
-**When launching multiple cameras, be sure to launch them at separate times (~1-2 seconds apart), this is potentially due to USB resource hog issues.**
+**When launching multiple cameras, be sure to launch them at separate times (~1-2 seconds apart), this is potentially due to USB resource hog issues. The [multipleCam.launch](ximea_ros2_cam/launch/multipleCam.launch.py) runs the second camera after 5 seconds.**
 
 ## Parameter Descriptions:
 

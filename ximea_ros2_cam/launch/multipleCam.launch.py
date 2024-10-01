@@ -44,7 +44,7 @@ def generate_launch_description():
 
     # Definir um atraso de 10 segundos antes de iniciar o segundo nó
     delayed_second_node = TimerAction(
-        period=10.0,  # seconds
+        period=5.0,  # seconds
         actions=[second_node]
     )
 
