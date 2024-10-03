@@ -401,12 +401,10 @@ void XimeaROSCam::openCam() {
     int transport_buffer_size_default = 0;
     int transport_buffer_size_increment = 0;
     int transport_buffer_size_minimum = 0;
-        
+      
     xi_stat = xiGetParamInt(this->xi_h_, XI_PRM_ACQ_TRANSPORT_BUFFER_SIZE, &transport_buffer_size_default);
     xi_stat = xiGetParamInt(this->xi_h_, XI_PRM_ACQ_TRANSPORT_BUFFER_SIZE XI_PRM_INFO_INCREMENT, &transport_buffer_size_increment);
     xi_stat = xiGetParamInt(this->xi_h_, XI_PRM_ACQ_TRANSPORT_BUFFER_SIZE XI_PRM_INFO_MIN, &transport_buffer_size_minimum);
-    
-    
 
     if(payload < transport_buffer_size_default + transport_buffer_size_increment){
         
@@ -419,15 +417,12 @@ void XimeaROSCam::openCam() {
         if (transport_buffer_size < transport_buffer_size_minimum)
             transport_buffer_size = transport_buffer_size_minimum;
         xi_stat = xiSetParamInt(this->xi_h_, XI_PRM_ACQ_TRANSPORT_BUFFER_SIZE, transport_buffer_size);
-        
-        
     }
 
     //      -- Start camera acquisition --
     LOG_IF(this->debug_mode_print_, INFO, this->get_logger(), "Starting Acquisition...");
     xi_stat = xiStartAcquisition(this->xi_h_);
     LOG_IF(this->debug_mode_print_, INFO, this->get_logger(), "Acquisition started...");
-
 
     this->is_active_ = true;                    // set active to be true
 
@@ -573,7 +568,6 @@ void XimeaROSCam::publishOpenCVInverted(char* img_buffer,
                                     XI_IMG xi_img,
                                     rclcpp::Time timestamp)
 {
-    
     //create publisher for inverted image 
     this->image_inverted_pub_ = image_transport::create_camera_publisher(this, "ximea/image_inverted_raw");
 
@@ -600,8 +594,6 @@ void XimeaROSCam::publishOpenCVInverted(char* img_buffer,
 
     LOG_IF(this->debug_mode_print_, INFO, this->get_logger(),"Inverted image published");
 }
-
-
 
 //-------------------------------------------------------------------------------------
 // ALL PARAMS
