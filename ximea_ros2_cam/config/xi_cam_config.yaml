@@ -16,8 +16,9 @@ ximea_cam_node:
     #########################
     # Diagnostics Parameters
     #########################
-
-    enable_diagnostics: true
+  
+    enable_debug: true
+    enable_diagnostics: false
     data_age_max: 0.1
     pub_frequency: 5.0
     pub_frequency_tolerance: 1.0
@@ -32,7 +33,7 @@ ximea_cam_node:
     image_transport_compressed_png_level: 9
 
     # colour format
-    # format: "XI_RGB24"              # Recommended to set to RAW for ARM processors and do offline processing later
+    #format: "XI_RGB24"              # Recommended to set to RAW for ARM processors and do offline processing later
                                     #  some options: mono8, rgb24, raw8
 
     # triggering (0 - none, 1 - software trigger (NOT IMPLMENTED YET),
@@ -81,11 +82,3 @@ ximea_cam_node:
 
     # CV inverting for calibration purposes
     cv_invert_enable: false
-    
-    # lens control -> Only works if lens_mode is set to 1 (XI_ON)
-    # lens_mode: 0		                #XI_PRM_LENS_MODE or "lens_mode", 1 to enable lens control, else 0
-    # lens_aperture_value: 0.0	      #XI_PRM_LENS_APERTURE_VALUE or "lens_aperture_value"
-    # lens_aperture_index: 0          #XI_PRM_LENS_APERTURE_INDEX or "lens_aperture_index"
-    # lens_focus_movement_value: 0    #XI_PRM_LENS_FOCUS_MOVEMENT_VALUE or "lens_focus_movement_value"
-    # lens_focus_move: 0              #XI_PRM_LENS_FOCUS_MOVE or "lens_focus_move"
-    # lens_focal_length: 0 	          #XI_PRM_LENS_FOCAL_LENGTH or "lens_focal_length   

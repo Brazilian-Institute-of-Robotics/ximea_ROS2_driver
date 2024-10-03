@@ -1,22 +1,22 @@
-ximea_cam2_node:
+ximea_cam1_node:
   ros__parameters:
     ####################
     # Specific Configuration Parameters Go Here!
     ####################
   
-    serial_no: "UYFAS2411014"
-    cam_name: "ximea_cam"
-    calib_file: ""
-    frame_id: "0"
-    num_cams_in_bus: 2
-    format: "XI_RGB24"
-    cam_downsampling: "XI_DWN_4x4"
-    cam_downsampling_type: "XI_BINNING"
-    bw_safetyratio: 1.0
-    publish_xi_image_info: true
-    poll_time: 2.0
-    poll_time_frame: 0.001
-    cam_context_path: ""
+    serial_no: "UYGAS2411015"  # Serial number of camera (writen in camera body)
+    cam_name: "ximea_cam2"  # Desire name of the device
+    calib_file: ""  # Calib file path
+    frame_id: "0"  # Frame identification init number
+    num_cams_in_bus: 2  # Number of cameras in the same USB controller
+    format: "XI_MONO8"  # Image format
+    cam_downsampling: "XI_DWN_4x4"  # Downsampling factor
+    cam_downsampling_type: "XI_BINNING"  # Downsampling type
+    bw_safetyratio: 1.0  # Safety ratio of the USB buffer
+    publish_xi_image_info: true  # Allow camera_info topic publish
+    poll_time: 4.0  # Duration (in seconds) which the camera is attempted to open again
+    poll_time_frame: 0.001  # ROS timmer loop
+    cam_context_path: ""  # Path to save camera configuration
 
     ####################
     # General Configuration Parameters Go Here!
@@ -35,6 +35,7 @@ ximea_cam2_node:
     # Diagnostics Parameters
     #########################
 
+    enable_debug: true
     enable_diagnostics: true
     data_age_max: 0.1
     pub_frequency: 5.0
@@ -48,10 +49,6 @@ ximea_cam2_node:
     image_transport_compressed_format: "png"
     image_transport_compressed_jpeg_quality: 20
     image_transport_compressed_png_level: 9
-
-    # colour format
-    # format: "XI_RGB24"              # Recommended to set to RAW for ARM processors and do offline processing later
-                                    #  some options: mono8, rgb24, raw8
 
     # triggering (0 - none, 1 - software trigger (NOT IMPLMENTED YET),
     # 2 - hardware trigger)
@@ -85,25 +82,11 @@ ximea_cam2_node:
     roi_width: 1280                 # width height in pixels (2048)
     roi_height: 720                 # up to (1088)
 
-    #roi_left: 0                    # top left corner in pixels
-    #roi_top: 0
-    #roi_width: 2048                # width height in pixels (2048)
-    #roi_height: 1088               # up to (1088)
-
     # CV resizing
     # alternative to roi, maintains FOV with an expected performance tradeoff
     cv_resize_enable: false
     cv_height: 480
     cv_width: 636
 
-
     # CV inverting for calibration purposes
     cv_invert_enable: false
-    
-    # lens control -> Only works if lens_mode is set to 1 (XI_ON)
-    # lens_mode: 0		                #XI_PRM_LENS_MODE or "lens_mode", 1 to enable lens control, else 0
-    # lens_aperture_value: 0.0	      #XI_PRM_LENS_APERTURE_VALUE or "lens_aperture_value"
-    # lens_aperture_index: 0          #XI_PRM_LENS_APERTURE_INDEX or "lens_aperture_index"
-    # lens_focus_movement_value: 0    #XI_PRM_LENS_FOCUS_MOVEMENT_VALUE or "lens_focus_movement_value"
-    # lens_focus_move: 0              #XI_PRM_LENS_FOCUS_MOVE or "lens_focus_move"
-    # lens_focal_length: 0 	          #XI_PRM_LENS_FOCAL_LENGTH or "lens_focal_length   

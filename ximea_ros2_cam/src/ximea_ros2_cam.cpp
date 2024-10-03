@@ -3,6 +3,11 @@
 using namespace cv;
 namespace ximea_ros2_cam {
 
+#define LOG_IF(condition, level, logger, message) \
+    if (condition) { \
+        RCLCPP_##level(logger, message); \
+    }
+
 std::map<std::string, int> XimeaROSCam::ImgFormatMap = {
     {"XI_MONO8",      XI_MONO8},
     {"XI_MONO16",     XI_MONO16},
@@ -36,21 +41,21 @@ std::map<std::string, std::string> XimeaROSCam::ImgEncodingMap = {
 std::map<int, int> XimeaROSCam::CamMaxPixelWidth = { {0, 2048} };
 std::map<int, int> XimeaROSCam::CamMaxPixelHeight = { {0, 1088} };
 
-std::map<std::string, int> XimeaROSCam::DownsamplingMap= {
-    {"XI_DWN_1x1",      XI_DWN_1x1},
-    {"XI_DWN_2x2",      XI_DWN_2x2},
-    {"XI_DWN_3x3",      XI_DWN_3x3},
-    {"XI_DWN_4x4",      XI_DWN_4x4},
-    {"XI_DWN_5x5",      XI_DWN_5x5},
-    {"XI_DWN_6x6",      XI_DWN_6x6},
-    {"XI_DWN_7x7",      XI_DWN_7x7},
-    {"XI_DWN_8x8",      XI_DWN_8x8},
-    {"XI_DWN_9x9",      XI_DWN_9x9},
-    {"XI_DWN_10x10",      XI_DWN_10x10},
-    {"XI_DWN_16x16",      XI_DWN_16x16}
+std::map<std::string, int> XimeaROSCam::DownsamplingMap = {
+    {"XI_DWN_1x1", XI_DWN_1x1},
+    {"XI_DWN_2x2", XI_DWN_2x2},
+    {"XI_DWN_3x3", XI_DWN_3x3},
+    {"XI_DWN_4x4", XI_DWN_4x4},
+    {"XI_DWN_5x5", XI_DWN_5x5},
+    {"XI_DWN_6x6", XI_DWN_6x6},
+    {"XI_DWN_7x7", XI_DWN_7x7},
+    {"XI_DWN_8x8", XI_DWN_8x8},
+    {"XI_DWN_9x9", XI_DWN_9x9},
+    {"XI_DWN_10x10", XI_DWN_10x10},
+    {"XI_DWN_16x16", XI_DWN_16x16}
 };
 
-std::map<std::string, int> XimeaROSCam::DownsamplingTypeMap= {
+std::map<std::string, int> XimeaROSCam::DownsamplingTypeMap = {
     {"XI_BINNING",      XI_BINNING},
     {"XI_SKIPPING",      XI_SKIPPING}
 };
@@ -68,36 +73,40 @@ XimeaROSCam::XimeaROSCam() :
     is_active_(false)
     {
 
+    // Debug mode
+    this->declare_parameter("enable_debug", false);
+    this->get_parameter("enable_debug", this->debug_mode_print_);
+
     this->initCam();
     this->initTimers();
     this->openDeviceCb();
 
-    RCLCPP_INFO(this->get_logger(), "Node initialized..");
+    LOG_IF(this->debug_mode_print_, INFO, this->get_logger(), "Node initialized..");
 } // XimeaROSCam
 
 XimeaROSCam::~XimeaROSCam() {
     // Init variables
     XI_RETURN xi_stat;
 
-    RCLCPP_INFO(this->get_logger(), "Shutting down ximea_ros_cam node...");
+    LOG_IF(this->debug_mode_print_, INFO, this->get_logger(),"Shutting down ximea_ros_cam node...");
     // Stop acquisition and close device if handle is available
     if (this->xi_h_ != NULL) {
 
             
         //Save Camera context
         if (!this->cam_context_path_.empty()){
-            char* cam_context=NULL;
+            char * cam_context = NULL;
             #define SIZE_OF_CONTEXT_BUFFER (10*1024*1024) // 10MiB
             cam_context = (char*)malloc(SIZE_OF_CONTEXT_BUFFER);
             xi_stat= xiGetParamString(this->xi_h_, XI_PRM_API_CONTEXT_LIST, cam_context, SIZE_OF_CONTEXT_BUFFER);
 
-            std::ofstream file("/home/m2s2/ecal_meas/cam_context.bin", std::ios::out | std::ios::binary);
+            std::ofstream file(this->cam_context_path_, std::ios::out | std::ios::binary);
             file.write(cam_context, SIZE_OF_CONTEXT_BUFFER);
             file.close();
 
-            RCLCPP_INFO_STREAM(this->get_logger(), "Done Writing camera context file");
+            LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"Done Writing camera context file");
             std::string s(cam_context);
-            RCLCPP_INFO_STREAM(this->get_logger(), "Cam Context: " << s);
+            LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"Cam Context: " << s);
         }
             
         // Stop image acquisition
@@ -108,10 +117,10 @@ XimeaROSCam::~XimeaROSCam() {
         xiCloseDevice(this->xi_h_);
         this->xi_h_ = NULL;
 
-        RCLCPP_INFO_STREAM(this->get_logger(), "Closed device: " << this->cam_serialno_);
+        LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"Closed device: " << this->cam_serialno_);
     }
 
-    RCLCPP_INFO(this->get_logger(), "%s node shutdown complete.", this->get_name());
+    LOG_IF(this->debug_mode_print_, INFO, this->get_logger(), (std::string(this->get_name()) + "node shutdown complete.").c_str());
 
     // To avoid warnings
     (void)xi_stat;
@@ -120,7 +129,7 @@ XimeaROSCam::~XimeaROSCam() {
 // initTimers() - initialize the timers
 void XimeaROSCam::initTimers() {
     // Report start of function
-    RCLCPP_INFO(this->get_logger(), "Loading Timers ... ");
+    LOG_IF(this->debug_mode_print_, INFO, this->get_logger(),"Loading Timers ... ");
 
     // Load camera polling callback timer ((Ensure that with multiple cameras,
     // each time is about 2 seconds spaced apart)
@@ -128,22 +137,21 @@ void XimeaROSCam::initTimers() {
         this->create_wall_timer(std::chrono::duration<float>(this->poll_time_),
         std::bind(&XimeaROSCam::openDeviceCb, this));
     */
-    // RCLCPP_INFO_STREAM(this->get_logger(), "xi_open_device_cb_: " << this->xi_open_device_cb_);
+    // LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"xi_open_device_cb_: " << this->xi_open_device_cb_);
 
     // Load camera frame capture callback timer
     this->t_frame_cb_ =
         this->create_wall_timer(std::chrono::duration<float>(this->poll_time_frame_),
         std::bind(&XimeaROSCam::frameCaptureCb, this));
 
-    RCLCPP_INFO_STREAM(this->get_logger(), "t_frame_cb_: " << this->t_frame_cb_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"t_frame_cb_: " << this->t_frame_cb_);
 
     // Report end of function
-    RCLCPP_INFO(this->get_logger(), "... Timers Loaded.");
+    LOG_IF(this->debug_mode_print_, INFO, this->get_logger(),"... Timers Loaded.");
 } // initTimers
 
 void XimeaROSCam::initCam() {
-
-    RCLCPP_INFO(this->get_logger(), "Loading Camera Configuration Parameters");
+    LOG_IF(this->debug_mode_print_, INFO, this->get_logger(), "Loading Camera Configuration Parameters");
     this->initParams();
 
     // Basic init values
@@ -188,9 +196,9 @@ void XimeaROSCam::openCam() {
     // Downsampling config
     xi_stat = xiSetParamInt(this->xi_h_, XI_PRM_DOWNSAMPLING, this->cam_downsampling_int_);
     xi_stat = xiSetParamInt(this->xi_h_, XI_PRM_DOWNSAMPLING_TYPE, this->cam_downsampling_type_int_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "Setting downsampling to: " << this->cam_downsampling_ << " type:" << this->cam_downsampling_type_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "Setting downsampling to: " << this->cam_downsampling_ << " type:" << this->cam_downsampling_type_);
 
-    RCLCPP_INFO_STREAM(this->get_logger(),  "Status: " << xi_stat);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "Status: " << xi_stat);
 
     //      -- White balance mode --
     // Note: Setting XI_PRM_MANUAL right before or after setting coeffs
@@ -199,10 +207,10 @@ void XimeaROSCam::openCam() {
     // they will be overwritten once the manual coeff values are calculated.
     // This also is the same when XI_PRM_MANUAL is set to 0 as well.
     if (this->cam_white_balance_mode_ == 2) {
-        RCLCPP_INFO_STREAM(this->get_logger(),  "WHITE BALANCE MODE SET TO AUTO.");
+        LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "WHITE BALANCE MODE SET TO AUTO.");
         xi_stat = xiSetParamInt(this->xi_h_, XI_PRM_AUTO_WB, 1);
     } else if (this->cam_white_balance_mode_ == 1) {
-        RCLCPP_INFO_STREAM(this->get_logger(),  "WHITE BALANCE MODE SET TO APPLY COEFFS.");
+        LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "WHITE BALANCE MODE SET TO APPLY COEFFS.");
         xi_stat = xiSetParamInt(this->xi_h_, XI_PRM_AUTO_WB, 0);
         xi_stat = xiSetParamFloat(this->xi_h_, XI_PRM_WB_KR,
                                   this->cam_white_balance_coef_r_);
@@ -211,7 +219,7 @@ void XimeaROSCam::openCam() {
         xi_stat = xiSetParamFloat(this->xi_h_, XI_PRM_WB_KB,
                                   this->cam_white_balance_coef_b_);
     } else if (this->cam_white_balance_mode_ == 0) {
-        RCLCPP_INFO_STREAM(this->get_logger(),  "WHITE BALANCE MODE SET TO NONE.");
+        LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "WHITE BALANCE MODE SET TO NONE.");
         xi_stat = xiSetParamInt(this->xi_h_, XI_PRM_AUTO_WB, 0);
     } else {
         RCLCPP_WARN_STREAM(this->get_logger(),  "WHITE BALANCE MODE IS NOT 0 TO 2!");
@@ -246,7 +254,7 @@ void XimeaROSCam::openCam() {
     // auto exposure.
     //      -- Set manual exposure --
     if (!this->cam_autoexposure_) {
-        RCLCPP_INFO_STREAM(this->get_logger(),  "Setting manual exposure: EXPOSURE AMOUNT: " <<
+        LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "Setting manual exposure: EXPOSURE AMOUNT: " <<
                         this->cam_exposure_time_ << " GAIN: " <<
                         this->cam_manualgain_);
         // manual exposure
@@ -262,7 +270,7 @@ void XimeaROSCam::openCam() {
                                   this->cam_manualgain_);
     //      -- Set auto exposure --
     } else {
-        RCLCPP_INFO_STREAM(this->get_logger(),  "Setting auto exposure: EXPOSURE TIME LIMIT: " <<
+        LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "Setting auto exposure: EXPOSURE TIME LIMIT: " <<
                         this->cam_autotime_limit_ << " GAIN LIMIT: " <<
                         this->cam_autogain_limit_ << " AUTO PRIORITY: " <<
                         this->cam_autoexposure_priority_);
@@ -286,9 +294,9 @@ void XimeaROSCam::openCam() {
 
     //      -- Set region of interest --
     int max_cam_width = CamMaxPixelWidth[this->cam_model_];
-    RCLCPP_INFO_STREAM(this->get_logger(),  "MAX WIDTH: " << max_cam_width);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "MAX WIDTH: " << max_cam_width);
     int max_cam_height = CamMaxPixelHeight[this->cam_model_];
-    RCLCPP_INFO_STREAM(this->get_logger(),  "MAX HEIGHT: " << max_cam_height);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "MAX HEIGHT: " << max_cam_height);
 
     // Check bounds
     if (this->cam_roi_left_ < 0 || this->cam_roi_left_ > max_cam_width ||
@@ -298,15 +306,15 @@ void XimeaROSCam::openCam() {
         this->cam_roi_left_ + this->cam_roi_width_ > max_cam_width ||
         this->cam_roi_top_ + this->cam_roi_height_ > max_cam_height) {
 
-        RCLCPP_INFO_STREAM(this->get_logger(), "cam_roi_left_: " << this->cam_roi_left_);
-        RCLCPP_INFO_STREAM(this->get_logger(), "cam_roi_top_: " << this->cam_roi_top_);
-        RCLCPP_INFO_STREAM(this->get_logger(), "cam_roi_width_: " << this->cam_roi_width_);
-        RCLCPP_INFO_STREAM(this->get_logger(), "cam_roi_height_: " << this->cam_roi_height_);
+        LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"cam_roi_left_: " << this->cam_roi_left_);
+        LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"cam_roi_top_: " << this->cam_roi_top_);
+        LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"cam_roi_width_: " << this->cam_roi_width_);
+        LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"cam_roi_height_: " << this->cam_roi_height_);
 
-        RCLCPP_INFO_STREAM(this->get_logger(), "cam_roi_left_: " << this->cam_roi_left_);
-        RCLCPP_INFO_STREAM(this->get_logger(), "cam_roi_top_: " << this->cam_roi_top_);
-        RCLCPP_INFO_STREAM(this->get_logger(), "cam_roi_width_: " << this->cam_roi_width_);
-        RCLCPP_INFO_STREAM(this->get_logger(), "cam_roi_height_: " << this->cam_roi_height_);
+        LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"cam_roi_left_: " << this->cam_roi_left_);
+        LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"cam_roi_top_: " << this->cam_roi_top_);
+        LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"cam_roi_width_: " << this->cam_roi_width_);
+        LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"cam_roi_height_: " << this->cam_roi_height_);
 
         // Out of bounds, throw error here
         return;
@@ -330,7 +338,7 @@ void XimeaROSCam::openCam() {
     }
 
     // Set bandwidth limit for camera and apply a safety ratio
-    RCLCPP_INFO_STREAM(this->get_logger(),  "Limiting bandwidth to: " <<
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "Limiting bandwidth to: " <<
             (int)((float)avail_bw*this->cam_bw_safetyratio_) << " Mbits/sec");
     xi_stat = xiSetParamInt(this->xi_h_,
                             XI_PRM_LIMIT_BANDWIDTH,
@@ -350,7 +358,7 @@ void XimeaROSCam::openCam() {
     // If we are not in trigger mode, determine if we want to limit fps
     if (this->cam_trigger_mode_ == 0) {
         if (this->cam_framerate_control_) {
-            RCLCPP_INFO_STREAM(this->get_logger(),  "Setting frame rate control to: " <<
+            LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "Setting frame rate control to: " <<
                         this->cam_framerate_set_ << " Hz");
 
             xi_stat = xiSetParamInt(this->xi_h_,
@@ -416,9 +424,9 @@ void XimeaROSCam::openCam() {
     }
 
     //      -- Start camera acquisition --
-    RCLCPP_INFO(this->get_logger(),  "Starting Acquisition...");
+    LOG_IF(this->debug_mode_print_, INFO, this->get_logger(), "Starting Acquisition...");
     xi_stat = xiStartAcquisition(this->xi_h_);
-    RCLCPP_INFO(this->get_logger(),  "Acquisition started...");
+    LOG_IF(this->debug_mode_print_, INFO, this->get_logger(), "Acquisition started...");
 
 
     this->is_active_ = true;                    // set active to be true
@@ -431,14 +439,14 @@ void XimeaROSCam::openCam() {
 void XimeaROSCam::openDeviceCb() {
     XI_RETURN xi_stat;
 
-    RCLCPP_INFO_STREAM(this->get_logger(), "Polling Ximea Cam. Serial #: " << this->cam_serialno_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"Polling Ximea Cam. Serial #: " << this->cam_serialno_);
 
     xi_stat = xiOpenDeviceBy(XI_OPEN_BY_SN,
             this->cam_serialno_.c_str(),
             &this->xi_h_);
 
     if (xi_stat == XI_OK && this->xi_h_ != NULL) {
-        RCLCPP_INFO_STREAM(this->get_logger(), "Poll successful. Loading serial #: "
+        LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"Poll successful. Loading serial #: "
                         << this->cam_serialno_);
         this->xi_open_device_cb_.reset();
         XimeaROSCam::openCam();
@@ -492,7 +500,8 @@ void XimeaROSCam::frameCaptureCb() {
             sensor_msgs::msg::CameraInfo cam_info =
                     this->cam_info_manager_->getCameraInfo();      
             this->cam_pub_.publish(img, cam_info);
-            RCLCPP_INFO(this->get_logger(), "Image published: [%i]", this->img_count_);
+            LOG_IF(this->debug_mode_print_, INFO, this->get_logger(),
+                    ("Image published: [" + std::to_string(this->img_count_) + "]").c_str());
 
             if (this->img_count_ == 10 && !this->cam_context_path_.empty()){
                 //Save Camera context
@@ -505,9 +514,9 @@ void XimeaROSCam::frameCaptureCb() {
                 file.write(cam_context, SIZE_OF_CONTEXT_BUFFER);
                 file.close();
 
-                RCLCPP_INFO_STREAM(this->get_logger(), "Done Writing camera context file");
+                LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"Done Writing camera context file");
                 std::string s(cam_context);
-                RCLCPP_INFO_STREAM(this->get_logger(), "Cam Context: " << s);
+                LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"Cam Context: " + s);
             }
 
             // Publish cv resized image
@@ -556,7 +565,7 @@ void XimeaROSCam::publishOpenCVResized(char* img_buffer,
     cam_resized_info.width = this->cv_width;
     this->image_resized_pub_.publish(img_small, cam_resized_info);
 
-    RCLCPP_INFO(this->get_logger(), "Small image published");
+    LOG_IF(this->debug_mode_print_, INFO, this->get_logger(),"Small image published");
 }
 
 //for calibration purposes: need inverted image too
@@ -589,7 +598,7 @@ void XimeaROSCam::publishOpenCVInverted(char* img_buffer,
     cam_inverted_info.width = this->cv_width;
     this->image_inverted_pub_.publish(img_inverted, cam_inverted_info);
 
-    RCLCPP_INFO(this->get_logger(), "Inverted image published");
+    LOG_IF(this->debug_mode_print_, INFO, this->get_logger(),"Inverted image published");
 }
 
 
@@ -600,7 +609,7 @@ void XimeaROSCam::publishOpenCVInverted(char* img_buffer,
 void XimeaROSCam::initParams(){
     // Assume that all of the config is embedded in the camera private namespace
     // Load all parameters and store them into their corresponding vars
-
+    
     // CV Resize
     this->declare_parameter("cv_resize_enable", false);
     this->get_parameter("cv_resize_enable", this->cv_resize_enable_);
@@ -622,50 +631,50 @@ void XimeaROSCam::initParams(){
     //      -- apply camera name --
     this->declare_parameter("cam_name", std::string("INVALID"));
     this->get_parameter("cam_name", this->cam_name_);
-    RCLCPP_INFO_STREAM(this->get_logger(), "cam_name: " << this->cam_name_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"cam_name: " << this->cam_name_);
     
     //      -- apply camera specific parameters --
     this->declare_parameter( "serial_no", std::string("INVALID"));
     this->get_parameter("serial_no", this->cam_serialno_);
-    RCLCPP_INFO_STREAM(this->get_logger(), "serial number: " << this->cam_serialno_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"serial number: " << this->cam_serialno_);
     this->declare_parameter( "frame_id", std::string("'0'"));
     this->get_parameter("frame_id", this->cam_frameid_);
-    RCLCPP_INFO_STREAM(this->get_logger(), "frame id: " << this->cam_frameid_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"frame id: " << this->cam_frameid_);
     this->declare_parameter( "calib_file", std::string("INVALID"));
     this->get_parameter("calib_file", this->cam_calib_file_);
-    RCLCPP_INFO_STREAM(this->get_logger(), "calibration file: " << this->cam_calib_file_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"calibration file: " << this->cam_calib_file_);
     this->declare_parameter("poll_time", -1.0f);
     this->get_parameter("poll_time", this->poll_time_);
-    RCLCPP_INFO_STREAM(this->get_logger(), "poll_time: " << this->poll_time_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"poll_time: " << this->poll_time_);
     this->declare_parameter("poll_time_frame", 0.0f);
     this->get_parameter("poll_time_frame", this->poll_time_frame_);
-    RCLCPP_INFO_STREAM(this->get_logger(), "poll_time_frame: " << this->poll_time_frame_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"poll_time_frame: " << this->poll_time_frame_);
     
 
     //      -- apply compressed image parameters (from image_transport) --
     this->declare_parameter( "image_transport_compressed_format", std::string("INVALID"));
     this->get_parameter( "image_transport_compressed_format", this->cam_compressed_format_);
-    RCLCPP_INFO_STREAM(this->get_logger(), "image_transport_compressed_format: "
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"image_transport_compressed_format: "
         << this->cam_compressed_format_);
     this->declare_parameter( "image_transport_compressed_jpeg_quality", -1);
     this->get_parameter("image_transport_compressed_jpeg_quality", this->cam_compressed_jpeg_quality_);
-    RCLCPP_INFO_STREAM(this->get_logger(), "image_transport_compressed_jpeg_quality: "
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"image_transport_compressed_jpeg_quality: "
         << this->cam_compressed_jpeg_quality_);
     this->declare_parameter("image_transport_compressed_png_level", -1);
     this->get_parameter("image_transport_compressed_png_level", this->cam_compressed_png_level_);
-    RCLCPP_INFO_STREAM(this->get_logger(), "image_transport_compressed_png_level: "
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"image_transport_compressed_png_level: "
         << this->cam_compressed_png_level_);
 
     //      -- apply image format parameters --
     this->declare_parameter( "format", std::string("INVALID"));
     this->get_parameter("format", this->cam_format_);
-    RCLCPP_INFO_STREAM(this->get_logger(), "format: " << this->cam_format_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"format: " << this->cam_format_);
     this->cam_format_int_ = ImgFormatMap[this->cam_format_];
-    RCLCPP_INFO_STREAM(this->get_logger(), "format_int: " << this->cam_format_int_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"format_int: " << this->cam_format_int_);
     this->cam_bytesperpixel_ = BytesPerPixelMap[this->cam_format_];
-    RCLCPP_INFO_STREAM(this->get_logger(), "cam_bytesperpixel_: " << this->cam_bytesperpixel_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"cam_bytesperpixel_: " << this->cam_bytesperpixel_);
     this->cam_encoding_ = ImgEncodingMap[this->cam_format_];
-    RCLCPP_INFO_STREAM(this->get_logger(), "cam_encoding_: " << this->cam_encoding_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"cam_encoding_: " << this->cam_encoding_);
 
     //      -- apply bandwidth parameters --
     this->declare_parameter("num_cams_in_bus", -1);
@@ -678,84 +687,84 @@ void XimeaROSCam::initParams(){
     //      -- apply triggering parameters --
     this->declare_parameter("cam_trigger_mode", -1);
     this->get_parameter("cam_trigger_mode", this->cam_trigger_mode_);
-    RCLCPP_INFO_STREAM(this->get_logger(), "cam_trigger_mode_: " << this->cam_trigger_mode_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"cam_trigger_mode_: " << this->cam_trigger_mode_);
     this->declare_parameter("hw_trigger_edge", -1);
     this->get_parameter("hw_trigger_edge", this->cam_hw_trigger_edge_);
-    RCLCPP_INFO_STREAM(this->get_logger(), "cam_hw_trigger_edge_: " << this->cam_hw_trigger_edge_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(),"cam_hw_trigger_edge_: " << this->cam_hw_trigger_edge_);
 
     //      -- apply framerate (software cap) parameters --
     this->declare_parameter( "frame_rate_control", false);
     this->get_parameter("frame_rate_control", this->cam_framerate_control_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_framerate_control_: " << this->cam_framerate_control_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "cam_framerate_control_: " << this->cam_framerate_control_);
     this->declare_parameter("frame_rate_set", -1);
     this->get_parameter("frame_rate_set", this->cam_framerate_set_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_framerate_set_: " << this->cam_framerate_set_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "cam_framerate_set_: " << this->cam_framerate_set_);
     this->declare_parameter("img_capture_timeout", -1);
     this->get_parameter("img_capture_timeout", this->cam_img_cap_timeout_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_img_cap_timeout_: " << this->cam_img_cap_timeout_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "cam_img_cap_timeout_: " << this->cam_img_cap_timeout_);
 
     //      -- apply downsampling parameters --
     this->declare_parameter( "cam_downsampling", std::string("XI_DWN_1x1"));
     this->get_parameter("cam_downsampling", this->cam_downsampling_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_downsampling: " << this->cam_downsampling_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "cam_downsampling: " << this->cam_downsampling_);
     this->cam_downsampling_int_ = DownsamplingMap[this->cam_downsampling_];
     this->declare_parameter( "cam_downsampling_type", std::string("XI_BINNING"));
     this->get_parameter("cam_downsampling_type", this->cam_downsampling_type_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_downsampling_type: " << this->cam_downsampling_type_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "cam_downsampling_type: " << this->cam_downsampling_type_);
     this->cam_downsampling_type_int_ = DownsamplingTypeMap[this->cam_downsampling_type_];
 
     //      -- apply exposure parameters --
     this->declare_parameter("auto_exposure", false);
     this->get_parameter("auto_exposure", this->cam_autoexposure_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_autoexposure_: " << this->cam_autoexposure_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "cam_autoexposure_: " << this->cam_autoexposure_);
     this->declare_parameter("manual_gain", -1.0f);
     this->get_parameter("manual_gain", this->cam_manualgain_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_manualgain_: " << this->cam_manualgain_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "cam_manualgain_: " << this->cam_manualgain_);
     this->declare_parameter("exposure_time", -1);
     this->get_parameter("exposure_time", this->cam_exposure_time_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_exposure_time_: " << this->cam_exposure_time_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "cam_exposure_time_: " << this->cam_exposure_time_);
     this->declare_parameter( "auto_exposure_priority", -1.0f);
     this->get_parameter("auto_exposure_priority", this->cam_autoexposure_priority_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_autoexposure_priority_: "
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "cam_autoexposure_priority_: "
         << this->cam_autoexposure_priority_);
     this->declare_parameter("auto_time_limit", -1);
     this->get_parameter("auto_time_limit", this->cam_autotime_limit_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_autotime_limit_: " << this->cam_autotime_limit_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "cam_autotime_limit_: " << this->cam_autotime_limit_);
     this->declare_parameter( "auto_gain_limit", -1.0f);
     this->get_parameter( "auto_gain_limit", this->cam_autogain_limit_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_autogain_limit_: " << this->cam_autogain_limit_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "cam_autogain_limit_: " << this->cam_autogain_limit_);
 
     //      -- apply white balance parameters --
     this->declare_parameter( "white_balance_mode", -1);
     this->get_parameter( "white_balance_mode", this->cam_white_balance_mode_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_white_balance_mode_: "
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "cam_white_balance_mode_: "
         << this->cam_white_balance_mode_);
     this->declare_parameter( "white_balance_coef_red", -1.0f);
     this->get_parameter( "white_balance_coef_red", this->cam_white_balance_coef_r_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_white_balance_coef_r_: "
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "cam_white_balance_coef_r_: "
         << this->cam_white_balance_coef_r_);
     this->declare_parameter("white_balance_coef_green", -1.0f);
     this->get_parameter( "white_balance_coef_green", this->cam_white_balance_coef_g_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_white_balance_coef_g_: "
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "cam_white_balance_coef_g_: "
         << this->cam_white_balance_coef_g_);
     this->declare_parameter("white_balance_coef_blue", -1.0f);
     this->get_parameter( "white_balance_coef_blue", this->cam_white_balance_coef_b_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_white_balance_coef_b_: "
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "cam_white_balance_coef_b_: "
         << this->cam_white_balance_coef_b_);
 
     //      -- apply ROI parameters --
     this->declare_parameter("roi_left", -1);
     this->get_parameter("roi_left", this->cam_roi_left_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_roi_left_: " << this->cam_roi_left_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "cam_roi_left_: " << this->cam_roi_left_);
     this->declare_parameter("roi_top", -1);
     this->get_parameter("roi_top", this->cam_roi_top_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_roi_top_: " << this->cam_roi_top_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "cam_roi_top_: " << this->cam_roi_top_);
     this->declare_parameter("roi_width", -1);
     this->get_parameter("roi_width", this->cam_roi_width_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_roi_width_: " << this->cam_roi_width_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "cam_roi_width_: " << this->cam_roi_width_);
     this->declare_parameter("roi_height", -1);
     this->get_parameter("roi_height", this->cam_roi_height_);
-    RCLCPP_INFO_STREAM(this->get_logger(),  "cam_roi_height_: " << this->cam_roi_height_);
+    LOG_IF(this->debug_mode_print_, INFO_STREAM, this->get_logger(), "cam_roi_height_: " << this->cam_roi_height_);
 
 }  // initParams
 

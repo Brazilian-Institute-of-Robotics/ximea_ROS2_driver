@@ -1,22 +1,22 @@
-ximea_cam1_node:
+ximea_cam2_node:
   ros__parameters:
     ####################
     # Specific Configuration Parameters Go Here!
     ####################
   
-    serial_no: "UYGAS2411015"
-    cam_name: "ximea_cam2"
-    calib_file: ""
-    frame_id: "0"
-    num_cams_in_bus: 2
-    format: "XI_MONO8"
-    cam_downsampling: "XI_DWN_4x4"
-    cam_downsampling_type: "XI_BINNING"
-    bw_safetyratio: 1.0
-    publish_xi_image_info: true
-    poll_time: 4.0
-    poll_time_frame: 0.001
-    cam_context_path: ""
+    serial_no: "UYFAS2411014"  # Serial number of camera (writen in camera body)
+    cam_name: "ximea_cam"  # Desire name of the device
+    calib_file: ""  # Calib file path
+    frame_id: "0"  # Frame identification init number
+    num_cams_in_bus: 2  # Number of cameras in the same USB controller
+    format: "XI_RGB24"  # Image format
+    cam_downsampling: "XI_DWN_4x4"  # Downsampling factor
+    cam_downsampling_type: "XI_BINNING"  # Downsampling type
+    bw_safetyratio: 1.0  # Safety ratio of the USB buffer
+    publish_xi_image_info: true  # Allow camera_info topic publish
+    poll_time: 2.0  # Duration (in seconds) which the camera is attempted to open again
+    poll_time_frame: 0.001  # ROS timmer loop
+    cam_context_path: ""  # Path to save camera configuration
 
     ####################
     # General Configuration Parameters Go Here!
@@ -35,6 +35,7 @@ ximea_cam1_node:
     # Diagnostics Parameters
     #########################
 
+    enable_debug: false
     enable_diagnostics: true
     data_age_max: 0.1
     pub_frequency: 5.0

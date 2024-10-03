@@ -104,7 +104,7 @@ $ cd ~/ros2_ws/ximea_ROS2_driver
 $ colcon build --packages-select ximea_ros2_cam
 ```
 
-Modify camera parameters as desired in the [config](ximea_ros2_cam/config/xiCam_config.yaml) and [launch](ximea_ros2_cam/launch/xiCam.launch.xml) files, and run the node using the provided launch file or a custom one. 
+Modify camera parameters as desired in the [config](ximea_ros2_cam/config/xi_cam_config) and [launch](ximea_ros2_cam/launch/xiCam.launch.xml) files, and run the node using the provided launch file or a custom one. 
 
 ### Launching a single camera:
 ```bash
@@ -119,14 +119,14 @@ $ ros2 run rqt_image_view rqt_image_view
 ### Launch multiple cameras:
 
 ```bash
-$ ros2 launch ximea_ros2_cam multipleCam.launch.py
+$ ros2 launch ximea_ros2_cam multiple_camera.launch.py
 
 # To view the stream
 $ ros2 run rqt_image_view rqt_image_view
 ```
-The [multipleCam.launch](ximea_ros2_cam/launch/multipleCam.launch.py) file calls both camera configs [xiCam1_config](ximea_ros2_cam/config/xiCam1_config.yaml) and [xiCam2_config](ximea_ros2_cam/config/xiCam2_config.yaml).
+The [multiple_camera.launch](ximea_ros2_cam/launch/multiple_camera.launch.py) file calls both camera configs [xiCam1_config](ximea_ros2_cam/config/xi_cam1_config) and [xiCam2_config](ximea_ros2_cam/config/xi_cam2_config).
 
-**When launching multiple cameras, be sure to launch them at separate times (~1-2 seconds apart), this is potentially due to USB resource hog issues. The [multipleCam.launch](ximea_ros2_cam/launch/multipleCam.launch.py) runs the second camera after 5 seconds.**
+**When launching multiple cameras, be sure to launch them at separate times (~1-2 seconds apart), this is potentially due to USB resource hog issues. The [multiple_camera.launch](ximea_ros2_cam/launch/multiple_camera.launch.py) runs the second camera after 5 seconds.**
 
 ## Parameter Descriptions:
 
@@ -180,6 +180,8 @@ XI_SKIPPING	pixels are skipped - higher frame rate
 `save_disk` - Save images to disk, under the directory `<image_directory>/stream` 
 
 `calib_mode` - Saves images everytime a trigger is pressed, under the director `<image_directory>/calib`
+
+`cam_context_path` - Path to save camera configuration
 
 ### Compressed Image Transport Parameters
 
