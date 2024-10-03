@@ -37,6 +37,8 @@
 
 namespace ximea_ros2_cam {
 
+const int kMaxNumberImages = 10;
+
 class XimeaROSCam : public rclcpp::Node, std::enable_shared_from_this<XimeaROSCam> {
  public:
     XimeaROSCam();

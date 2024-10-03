@@ -498,7 +498,7 @@ void XimeaROSCam::frameCaptureCb() {
             LOG_IF(this->debug_mode_print_, INFO, this->get_logger(),
                     ("Image published: [" + std::to_string(this->img_count_) + "]").c_str());
 
-            if (this->img_count_ == 10 && !this->cam_context_path_.empty()){
+            if (this->img_count_ == kMaxNumberImages && !this->cam_context_path_.empty()){
                 //Save Camera context
                 char* cam_context=NULL;
 	            #define SIZE_OF_CONTEXT_BUFFER (10*1024*1024) // 10MiB
