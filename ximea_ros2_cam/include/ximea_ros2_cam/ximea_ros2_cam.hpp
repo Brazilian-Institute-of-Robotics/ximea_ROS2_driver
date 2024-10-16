@@ -37,6 +37,8 @@
 
 namespace ximea_ros2_cam {
 
+const int kMaxNumberImages = 10;
+
 class XimeaROSCam : public rclcpp::Node, std::enable_shared_from_this<XimeaROSCam> {
  public:
     XimeaROSCam();
@@ -84,11 +86,13 @@ class XimeaROSCam : public rclcpp::Node, std::enable_shared_from_this<XimeaROSCa
                         rclcpp::Time timestamp);
 
    // Configuration Maps
-   static std::map<std::string, int> ImgFormatMap;
-   static std::map<std::string, int> BytesPerPixelMap;
-   static std::map<std::string, std::string> ImgEncodingMap;
-   static std::map<int, int> CamMaxPixelWidth;
-   static std::map<int, int> CamMaxPixelHeight;
+   static std::map<std::string, int> ImgFormatMap;  // Maps image format names to their corresponding integer values.
+   static std::map<std::string, int> BytesPerPixelMap;  // Maps image format names to the number of bytes per pixel.
+   static std::map<std::string, std::string> ImgEncodingMap;  // Maps image format names to their corresponding encoding formats (e.g., JPEG, PNG).
+   static std::map<int, int> CamMaxPixelWidth;  // Maps camera IDs to their maximum supported pixel widths.
+   static std::map<int, int> CamMaxPixelHeight;  // Maps camera IDs to their maximum supported pixel heights.
+   static std::map<std::string, int> DownsamplingMap;  // Maps downsampling factor names to their corresponding integer values.
+   static std::map<std::string, int> DownsamplingTypeMap; // Maps downsampling factor names to their corresponding downsampling types.
 
    // ROS Timers
    rclcpp::TimerBase::SharedPtr xi_open_device_cb_;
@@ -98,7 +102,7 @@ class XimeaROSCam : public rclcpp::Node, std::enable_shared_from_this<XimeaROSCa
    void openDeviceCb();
    void frameCaptureCb();
 
-
+   bool debug_mode_print_;  // Turn on/off ROS debugs prints
 
    // ROS  Publishers
    rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr cam_info_pub_;             // Cam info publisher handle
@@ -136,28 +140,32 @@ class XimeaROSCam : public rclcpp::Node, std::enable_shared_from_this<XimeaROSCa
    std::string cam_encoding_;               // Camera image encoding
    int cam_bytesperpixel_;                  // Camera image bytes per pixel
    std::string cam_serialno_;               // Camera serial no
-   std::string cam_frameid_;
-   float poll_time_;			     // For launching cameras in succession
-   float poll_time_frame_;                  // For each image buffer check
-   int cam_model_;
-   std::string cam_calib_file_;
-   int cam_trigger_mode_;
-   int cam_hw_trigger_edge_;
-   bool cam_autoexposure_;
-   int cam_exposure_time_;
-   float cam_manualgain_;
-   int cam_autotime_limit_;
-   float cam_autoexposure_priority_;
-   float cam_autogain_limit_;
-   bool cam_binning_en_;
-   int cam_downsample_factor_;
-   int cam_roi_left_;
-   int cam_roi_top_;
-   int cam_roi_width_;
-   int cam_roi_height_;
+   std::string cam_frameid_; // The unique ID assigned to the camera frame.
+   float poll_time_;            // The time interval for launching cameras in succession (in seconds).
+   float poll_time_frame_;                  // The time interval for checking each image buffer (in seconds).
+   int cam_model_; // The model number of the camera.
+   std::string cam_calib_file_; // The path to the camera calibration file.
+   int cam_trigger_mode_; // The trigger mode of the camera (e.g., software, hardware).
+   int cam_hw_trigger_edge_; // The edge of the hardware trigger signal (e.g., rising, falling).
+   bool cam_autoexposure_; // Whether automatic exposure is enabled.
+   int cam_exposure_time_; // The exposure time in microseconds.
+   float cam_manualgain_; // The manual gain value.
+   int cam_autotime_limit_; // The maximum time allowed for automatic exposure adjustment.
+   float cam_autoexposure_priority_; // The priority of automatic exposure adjustment (higher value means higher priority).
+   float cam_autogain_limit_; // The maximum gain value allowed for automatic gain adjustment.
+   bool cam_binning_en_; // Whether binning is enabled.
+   int cam_downsample_factor_; // The downsampling factor for the camera image.
+   int cam_roi_left_; // The left coordinate of the region of interest (ROI).
+   int cam_roi_top_; // The top coordinate of the ROI.
+   int cam_roi_width_; // The width of the ROI.
+   int cam_roi_height_; // The height of the ROI.
    bool cam_framerate_control_;   // framerate control - enable or disable
    int cam_framerate_set_;      // framerate control - setting fps
    int cam_img_cap_timeout_;       // max time to wait for img
+   std::string cam_downsampling_;  // camera downsampling parameter
+   int cam_downsampling_int_;  // camera downsampling correspondent int value
+   std::string cam_downsampling_type_;  // camera downsampling type parameter
+   int cam_downsampling_type_int_;  // camera downsampling type  correspondent int value
 
    // white balance mode: 0 - none, 1 - use coeffs, 2 = auto
    int cam_white_balance_mode_;
